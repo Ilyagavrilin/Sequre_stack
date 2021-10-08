@@ -17,6 +17,8 @@ enum ERRS {
     STK_OVERFLOW,
     BAD_SZ_CP,
     BAD_DAT,
+    ALLOCATION_ERR,
+    CNR_ERR,
 };
 
 #endif //FIRST_STACK_GLOBALS_H
