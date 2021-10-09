@@ -100,10 +100,11 @@ int set_bit(int bit_num, long long *container, int max_bite) {
 
 /*
  * we write err code like turning some bits in long long into 1
- * 0 bit - non valid pointer to stack
+ * 0 bit - non valid pointer to stack(stops work of stackOk)
  * 1 bit - non valid pointer to massive
  * 2 bit - error in stack`s capacity or size
  * 3 bit - some movements changed information in stack buffer
+ * 4 bit - canaries value had been changed
  */
 ERRS StackOk(const Stack *st, long long *errs_container) {
     ERRS last_err = OK;
@@ -128,6 +129,10 @@ ERRS StackOk(const Stack *st, long long *errs_container) {
         last_err = BAD_DAT;
         set_bit(3, errs_container, sizeof(long long));
     }
+    if (check_canaries(st) != OK) {
+        last_err = CNR_ERR;
+        set_bit(4, errs_container, sizeof(long long));
+    }
 
     return last_err;
 }
@@ -140,7 +145,7 @@ ERRS set_canaries(Stack *st) {
     return OK;
 }
 
-ERRS check_canaries(Stack *st) {
+ERRS check_canaries(const Stack *st) {
     ERRS res = OK;
     //check canaries in stack struct
     int is_error = 0;
@@ -184,12 +189,53 @@ ERRS check_canaries(Stack *st) {
 ERRS StackPop(Stack *st, void *buffer, long long *errs_container) {
     ERRS last_err = OK;
     if ((last_err = StackOk(st, errs_container)) != OK) {
-        return last_err;
+        //finish process, because we can`t work with non initialized stack
+        if (last_err == NULL_POINTER) {return last_err;}
     }
-
+    //check if stack has element to pop
+    if (st->size == 0) {
+        return NO_ELEMENTS;
+    }
+    //copy last element to user`s buffer
     void* pointer = (char*)st->data + st->size * st->element_sz;
     memcpy(buffer, pointer, st->element_sz);
+    //use single poison by memcpy(), because we need poison only one element
+    memcpy(pointer, &DAT_POISON, st->element_sz);
+
     st->size--;
+    StackResize(st);
 
     return last_err;
+}
+
+ERRS StackPush(Stack *st, void *value, long long *errs_container) {
+    ERRS last_err = OK;
+    if ((last_err = StackOk(st, errs_container)) != OK) {
+        if (last_err == NULL_POINTER) {return last_err;}
+    }
+    st->size++;
+    StackResize(st);
+
+    void* pointer = (char*)st->data + st->size * st->element_sz;
+    memcpy(pointer, value, st->element_sz);
+
+    return last_err;
+}
+
+
+ERRS StackResize(Stack *st) {
+    double rsz_coef_more = 2;
+    double rez_coef_less = 0.75;
+    //choose how change resize coefficient on big sizes of stack
+    if (st->capacity > 1000) {
+        rsz_coef_more = 1.8;
+    }
+    else if (st->capacity > 100000) {
+        rsz_coef_more = 1.6;
+    }
+
+
+    if (st->size < st->capacity) {
+
+    }
 }

@@ -19,6 +19,7 @@ enum ERRS {
     BAD_DAT,
     ALLOCATION_ERR,
     CNR_ERR,
+    NO_ELEMENTS,
 };
 
 #endif //FIRST_STACK_GLOBALS_H

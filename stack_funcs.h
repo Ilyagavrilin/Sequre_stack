@@ -43,12 +43,16 @@ ERRS poison(Stack *st);
 
 ERRS set_canaries(Stack *st);
 
-ERRS check_canaries(Stack *st);
+ERRS check_canaries(const Stack *st);
 
 int set_bit(int bit_num, long long *container, int max_bite);
 
 int is_poisoned(const Stack *st);
 
 ERRS StackPop(Stack *st, void *buffer, long long *errs_container);
+
+ERRS StackPush(Stack *st, void *value, long long *errs_container);
+
+ERRS StackResize(Stack *st);
 
 #endif //FIRST_STACK_STACK_FUNCS_H
