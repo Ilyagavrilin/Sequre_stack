@@ -1,6 +1,11 @@
 #include "globals.h"
 #include "stack_funcs.h"
 
+size_t DAT_POISON = 0xBADDED;
+size_t MARGIN_POISON = 0xBADDDED;
+canary_t CNR_VAL = 0xB0BAB1BA;
+int ERR_CNT = 5;
+const char* FILENAME = "st_logs.html";
 
 ERRS StackCtor(Stack *st, size_t init_cp, size_t elem_sz) {
     //check which pointer had been given from user
@@ -136,6 +141,38 @@ ERRS StackOk(const Stack *st, long long *errs_container) {
 
     return last_err;
 }
+ERRS table_text(FILE* fptr,const char* column1, const char* column2, const char* color) {
+    if (fptr == nullptr) {
+        return NULL_POINTER;
+    }
+
+    fprintf(fptr, "<tr> <td><font color = %s >%s</font></td> "
+                  "<td><font color = %s >%s</font></td></tr>\n", color, column1, color, column2);
+    return OK;
+}
+ERRS err_view(const Stack *st, long long errs_container) {
+    const char* err = nullptr;
+    const char* color = nullptr;
+    fprintf(st->dump_fptr, "<table align=center>\n");
+    for (int i = 0; i <= ERR_CNT; i++) {
+
+        if (get_bit(errs_container, i) == 0) {err = "OK"; color = colored(GOOD);}
+        else {err = "ERROR"; color = colored(BAD);}
+
+        const char* err_defin = nullptr;
+        switch (i) {
+            case 0: err_defin = "Pointer to stack structure"; break;
+            case 1: err_defin = "Pointer to massive with stack data"; break;
+            case 2: err_defin = "Capacity and size values"; break;
+            case 3: err_defin = "Data integrity"; break;
+            case 4: err_defin = "Canaries values"; break;
+            default: err_defin = "Unkown type of error"; break;
+        }
+        table_text(st->dump_fptr, err_defin, err, color);
+    }
+    fprintf(st->dump_fptr, "</table>\n");
+    return OK;
+}
 
 ERRS set_canaries(Stack *st) {
     //TODO: add stackOk or another security system
@@ -150,7 +187,7 @@ ERRS check_canaries(const Stack *st) {
     //check canaries in stack struct
     int is_error = 0;
     if (st->canary_1 != CNR_VAL || st->canary_2 != CNR_VAL) {
-        char* pos_cnry;
+        const char* pos_cnry;
         if (st->canary_1 != CNR_VAL) {
             pos_cnry = "left";
         }
@@ -166,7 +203,7 @@ ERRS check_canaries(const Stack *st) {
     }
     //check canaries in data
     if ((((canary_t*) st->data)[-1] != CNR_VAL) || (*(canary_t*)((char*)st->data + st->capacity * st->element_sz) != CNR_VAL)) {
-        char * pos_cnry;
+        const char * pos_cnry;
         if (((canary_t*) st->data)[-1] != CNR_VAL) {
             pos_cnry = "left";
         }
@@ -222,10 +259,10 @@ ERRS StackPush(Stack *st, void *value, long long *errs_container) {
     return last_err;
 }
 
-
+//TODO: make resize
 ERRS StackResize(Stack *st) {
     double rsz_coef_more = 2;
-    double rez_coef_less = 0.75;
+    double rsz_coef_less = 2;
     //choose how change resize coefficient on big sizes of stack
     if (st->capacity > 1000) {
         rsz_coef_more = 1.8;
@@ -236,6 +273,100 @@ ERRS StackResize(Stack *st) {
 
 
     if (st->size < st->capacity) {
+        if (st->size < st->capacity / 2) {
+            void* pointer = nullptr;
+            pointer = realloc(st->block_st, st->capacity / rsz_coef_less);
+            if (pointer == nullptr) {
+                return NULL_POINTER; //do not change stack block_st pointer, work with more size
+            }
+            else {
+                st->capacity = (size_t) (st->capacity / rsz_coef_less);
+
+            }
+        }
 
     }
+}
+
+const char* colored(DAT_COND condition) {
+    if (condition == GOOD) {
+        return "#008000";
+    }
+    else if (condition == BAD) {
+        return "#FF0000";
+    }
+    else if (condition == INDEF) {
+        return "#FFD700";
+    }
+    else {
+        return nullptr;
+    }
+}
+
+int get_bit(long long val, size_t bit_pos) {
+    return (int)((val >> bit_pos) & 1ll);
+}
+
+ERRS DumpInit(Stack *st) {
+    FILE* fl_ptr = nullptr;
+    switch (SECURITY_LVL) {
+        case 0: return NO_DUMP;
+        default: fl_ptr = fopen(FILENAME, "w");
+    }
+
+    if (fl_ptr == nullptr) {
+        return NULL_POINTER;
+    }
+    st->dump_fptr = fl_ptr;
+
+    time_t curr_time = time(NULL);
+    fprintf(fl_ptr, "<!DOCTYPE html>\n"
+                    "<html lang=\"en\">\n"
+                    "<head>\n"
+                    "   <meta charset=\"UTF-8\">\n"
+                    "   <title>Secure stack dump</title>\n"
+                    "</head>\n"
+                    "<body>\n"
+                    "<p align=\"center\"><img src=\"/kit.jpg\" height=\"256\"></p>\n"
+                    "<p align=center>Dump initialized at %s</p>\n", asctime(gmtime(&curr_time)));
+    return OK;
+}
+
+ERRS DumpClose(const Stack *st) {
+    if (st->dump_fptr == nullptr) {
+        return NO_DUMP;
+    }
+    fprintf(st->dump_fptr, "<p align=center>Dump finished, file closed.</p>\n"
+                           "</body>\n"
+                           "</html>");
+    return OK;
+}
+
+/*
+ * we write err code like turning some bits in long long into 1
+ * 0 bit - non valid pointer to stack(stops work of stackOk)
+ * 1 bit - non valid pointer to massive
+ * 2 bit - error in stack`s capacity or size
+ * 3 bit - some movements changed information in stack buffer
+ * 4 bit - canaries value had been changed
+ */
+
+ERRS StackDmp(const Stack *st, long long errs_container) {
+    if (st->dump_fptr == nullptr) {
+        if (SECURITY_LVL == 0) {
+            return NO_DUMP;
+        }
+        else {
+            fprintf(stderr, "Error in dump opening, please check DumpInit function.\n");
+            return NULL_POINTER;
+        }
+    }
+    err_view(st, errs_container);
+    if (get_bit(errs_container, 0) == 1) {
+        fprintf(st->dump_fptr, "<p align=center><font color=%s>Stack has null pointer address, can`t dump it.</font></p>\n", colored(BAD));
+        DumpClose(st);
+        return NULL_POINTER;
+    }
+
+    return OK;
 }
