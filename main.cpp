@@ -1,14 +1,19 @@
 
+#include <ostream>
 #include "stack_funcs.h"
 
 int main() {
     Stack st = {};
-    DumpInit(&st);
-    long long a = 0ll;
-    set_bit(3, &a, sizeof(long long));
-    set_bit(2, &a, sizeof(long long));
-    set_bit(4, &a, sizeof(long long));
-    StackDmp(&st, a);
+    long long errs_container = 0;
+    StackCtor(&st, 0, sizeof(int));
     DumpClose(&st);
+    int a = 5;
+    StackPush(&st, &a, &errs_container);
+    int b = 0;
+    StackPop(&st, &b, &errs_container);
+    printf("%p\n", &b);
+    StackDtor(&st);
+
+
     return 0;
 }

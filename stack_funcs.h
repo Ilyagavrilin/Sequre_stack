@@ -21,16 +21,16 @@ typedef long long canary_t;
 
 
 typedef struct {
-    uint32_t hash_st;
+    unsigned int hash_dat;
     canary_t canary_1;
     void* block_st;
-    void *data;
+    void* data;
     size_t element_sz;
     size_t size;
     size_t capacity;
     FILE *dump_fptr;
     canary_t canary_2;
-    uint32_t hash_dat;
+    unsigned int hash_st;
 
 } Stack;
 
@@ -40,20 +40,35 @@ enum DAT_COND {
     INDEF,
 };
 
+enum ERRS {
+    OK,
+    STK_OK_ERR,
+    NULL_POINTER,
+    STK_OVERFLOW,
+    BAD_SZ_CP,
+    BAD_DAT,
+    ALLOCATION_ERR,
+    CNR_ERR,
+    NO_ELEMENTS,
+    NO_DUMP,
+    BAD_ST_HASH,
+    BAD_DAT_HASH,
+};
 
-ERRS StackCtor(Stack *st, size_t init_cp=0, size_t elem_sz=1);//changes made
+
+ERRS StackCtor(Stack *st, size_t init_cp=0, size_t elem_sz=1, const char* fname="st_logs.html");//changes made
 
 ERRS StackDtor(Stack *st);
 
-ERRS StackOk(const Stack *st, long long *errs_container);
+ERRS StackOk(Stack *st, long long *errs_container=nullptr);
 
-ERRS StackDmp(const Stack *st, long long errs_container=0);
+ERRS StackDmp(Stack *st, long long errs_container=0);
 
 ERRS poison(Stack *st);
 
 ERRS set_canaries(Stack *st);
 
-ERRS check_canaries(const Stack *st);
+ERRS check_canaries(Stack *st);
 
 int set_bit(int bit_num, long long *container, int max_bite);
 
@@ -69,12 +84,18 @@ ERRS StackPush(Stack *st, void *value, long long *errs_container);
 
 ERRS StackResize(Stack *st);
 
-ERRS DumpInit(Stack *st);
+ERRS DumpInit(Stack *st, const char* fname="st_logs.html");
 
 ERRS err_view(const Stack *st, long long errs_container);
 
 ERRS table_text(FILE* fptr,const char* column1, const char* column2, const char* color);
 
-ERRS DumpClose(const Stack *st);
+ERRS DumpClose(Stack *st);
+
+unsigned int hash_count(void* block_st, size_t length);
+
+ERRS set_hash(Stack *st);
+
+ERRS check_hash(Stack *st);
 
 #endif //FIRST_STACK_STACK_FUNCS_H

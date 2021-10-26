@@ -10,17 +10,6 @@
 
 
 
-enum ERRS {
-    OK,
-    STK_OK_ERR,
-    NULL_POINTER,
-    STK_OVERFLOW,
-    BAD_SZ_CP,
-    BAD_DAT,
-    ALLOCATION_ERR,
-    CNR_ERR,
-    NO_ELEMENTS,
-    NO_DUMP,
-};
+
 
 #endif //FIRST_STACK_GLOBALS_H
